@@ -64,7 +64,7 @@ def main() -> int:
         simple = entry["class"].rsplit(".", 1)[-1]
         for arm in arms[i % len(arms):] + arms[:i % len(arms)]:
             run_id = f"abl-{args.tag}-{arm}-{simple}"
-            run_dir = HARNESS / run_id
+            run_dir = HARNESS / "logs" / run_id      # utils.run_dir, from the harness root
             final = OUT / run_id
             if (final / "result.json").exists():
                 say(f"{run_id}: done already, skipping")

@@ -4,7 +4,7 @@ from time import time
 from typing import TYPE_CHECKING
 
 from retrieval import retriever
-from utils import advance_to_next_class, persist_checkpoint, config, write_to_log_file
+from utils import advance_to_next_class, persist_checkpoint, config, run_dir, write_to_log_file
 import os
 
 if TYPE_CHECKING:
@@ -27,7 +27,7 @@ def class_advancer_node(agent_state: "AgentState") -> dict:
     return advance_to_next_class(agent_state, runtime_total)
 
 def _write_metadata(run_id, runtime):
-    metadata_path = Path().resolve() / f"{run_id}" / "metadata.json"
+    metadata_path = run_dir(run_id) / "metadata.json"
     if not metadata_path.exists():
         metadata = {
             "model": config.get("MODEL", ""),

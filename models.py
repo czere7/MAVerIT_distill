@@ -9,7 +9,7 @@ from langchain_core.prompt_values import PromptValue
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
-from utils import config, ensure_file
+from utils import config, ensure_file, run_dir
 
 # The levels both Ollama's `think` and OpenAI's `reasoning_effort` accept, plus "off".
 # Only gpt-oss honours the levels on Ollama; Qwen3.8 treats every level as plain "on".
@@ -55,7 +55,7 @@ class ModelWrapper:
         """`tools`: OpenAI-style function schemas. The model may answer with tool calls; the
         caller executes them (see edit_tools.py) -- nothing is executed here."""
         time_stamp = round(time() * 1000)
-        path = Path().resolve() / f"{run_id}" / "prompt-response-pairs.jsonl"
+        path = run_dir(run_id) / "prompt-response-pairs.jsonl"
         ensure_file(path)
         while self.time_out_seconds < int(config.get("MAX_LLM_TIMEOUT", 60)):
             try:

@@ -68,9 +68,16 @@ def write_log(prefix: str, usage_metadata: UsageMetadata, agent_state: TypedDict
     })
     write_to_log_file(content, agent_state['run_id'])
 
+def run_dir(run_id: str) -> Path:
+    """Where one run's outputs go: log.jsonl, prompt-response-pairs.jsonl, metadata.json
+    and a single-class run's checkpoint. Under logs/ (gitignored) rather than the
+    harness root, where every run used to leave a directory named after its run id."""
+    return Path().resolve() / "logs" / f"{run_id}"
+
+
 def write_to_log_file(content:str, run_id: str):
     # print(json.dumps(json.loads(content), indent=2), end="")
-    log_path = Path().resolve() / f"{run_id}" / "log.jsonl"
+    log_path = run_dir(run_id) / "log.jsonl"
     ensure_file(log_path)
     with log_path.open("a", encoding="utf-8") as file:
         file.write(content + "\n")

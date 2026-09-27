@@ -24,7 +24,7 @@ from nodes.file_retriever_node import file_retriever_node
 from nodes.initial_test_write_node import initial_test_write_node
 from nodes.mutation_test_writer_node import mutation_test_writer_node
 from nodes.test_repair_node import test_repair_node
-from utils import config, get_working_directory, is_concrete_class
+from utils import config, get_working_directory, is_concrete_class, run_dir
 
 
 def build_graph():
@@ -252,9 +252,9 @@ def _prepare(args: argparse.Namespace) -> tuple[dict, Path]:
         # class finishes, and in single-class mode the one class IS the last -- so pointed
         # at the batch checkpoint, a one-class run would silently erase a batch run's
         # resume point. Each single run gets its own file instead.
-        run_dir = Path.cwd() / run_id
-        run_dir.mkdir(parents=True, exist_ok=True)
-        config["CLASS_INDEX_TMP_FILE"] = str(run_dir / "checkpoint.json")
+        single_dir = run_dir(run_id)
+        single_dir.mkdir(parents=True, exist_ok=True)
+        config["CLASS_INDEX_TMP_FILE"] = str(single_dir / "checkpoint.json")
 
         if args.rollout:
             if not args.rollout.is_file():
