@@ -21,6 +21,8 @@ import time
 import urllib.request
 from pathlib import Path
 
+from training.gpu import unload_ollama
+
 VLLM_ENV = Path(os.environ.get("VLLM_ENV", Path.home() / "vllm-env"))
 PORT = int(os.environ.get("VLLM_PORT", "8002"))
 URL = f"http://127.0.0.1:{PORT}"
@@ -56,6 +58,7 @@ def served_models() -> list[str]:
 def start(model_dir: Path, name: str, log_path: Path, wait_s: int = 900) -> None:
     """Serve `model_dir` as `name`; returns once /v1/models answers with that name."""
     stop()
+    unload_ollama()
     log = log_path.open("w", encoding="utf-8")
     subprocess.Popen([str(VLLM_ENV / "bin" / "vllm"), "serve", str(model_dir),
                       "--port", str(PORT), "--host", "127.0.0.1",

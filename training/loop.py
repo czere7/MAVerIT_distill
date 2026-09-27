@@ -45,10 +45,14 @@ from training.scoring import java, pertest
 from training.tokens import TRAIN_PYTHON, count
 
 ROOT = Path(__file__).resolve().parents[1]
-LOOP = ROOT / "logs" / "loop"
+# LOOP_DIR and MODELS_ROOT are overridable so a smoke run can never mix into the real one.
+LOOP = Path(os.environ.get("LOOP_DIR", ROOT / "logs" / "loop"))
 MODELS = Path(os.environ.get("MODELS_ROOT", Path.home() / "distil-models"))
 TEACHER_PROVIDER = os.environ.get("TEACHER_PROVIDER", "deepseek")
 TEACHER_MODEL = os.environ.get("TEACHER_MODEL", "deepseek-v4-flash")
+TEACHER_EFFORT = os.environ.get("TEACHER_REASONING_EFFORT") or None
+# A smoke run: only the N smallest-prompt classes, taken round-robin across projects.
+LIMIT = int(os.environ.get("LOOP_LIMIT", "0"))
 SCORE_WORKERS = 6
 TIER4_WORKERS = 4
 
@@ -81,6 +85,23 @@ def dataset_rows(target_rows: list[dict], prompts: dict[str, dict], scratch: Pat
     return kept, len(counted) - len(kept)
 
 
+def check_teacher() -> None:
+    """Fail before the first harness run, not inside it. An unreachable Ollama does not
+    error in the harness: every call waits out its timeout and retries, so a cold start
+    against a server that is not running sits at 0% CPU and GPU, looking busy."""
+    if TEACHER_PROVIDER != "ollama":
+        return
+    import urllib.request
+    from training.gpu import OLLAMA
+    try:
+        with urllib.request.urlopen(f"{OLLAMA}/api/tags", timeout=5) as response:
+            names = [m["name"] for m in json.loads(response.read()).get("models", [])]
+    except OSError as error:
+        raise SystemExit(f"Ollama at {OLLAMA} is not answering ({error}). Is it running?")
+    if TEACHER_MODEL not in names:
+        raise SystemExit(f"Ollama has no {TEACHER_MODEL}; it has {names}")
+
+
 # ------------------------------------------------------------------ prompts
 def cmd_prompts(_args) -> None:
     for name, projects in (("train", prompt_set.TRAINING), ("heldout", prompt_set.HELD_OUT)):
@@ -95,12 +116,20 @@ def load_prompts(name: str) -> dict[str, dict]:
     path = LOOP / f"prompts_{name}.jsonl"
     if not path.exists():
         raise SystemExit(f"{path} is missing; run `python -m training.loop prompts` first")
-    return {r["class_key"]: r for r in prompt_set.load(path)}
+    rows = prompt_set.load(path)
+    if LIMIT:
+        by_project = defaultdict(list)
+        for r in sorted(rows, key=lambda r: r["prompt_tokens"]):
+            by_project[r["project"]].append(r)
+        queues = [by_project[p] for p in sorted(by_project)]
+        rows = [q[i] for i in range(max(map(len, queues))) for q in queues if i < len(q)][:LIMIT]
+    return {r["class_key"]: r for r in rows}
 
 
 # ------------------------------------------------------------------ cold start
 def cmd_cold_start(args) -> None:
     prompts = load_prompts("train")
+    check_teacher()
     out = LOOP / "cold-start"
     runs = out / "runs.jsonl"
     done = {r["class_key"] for r in read_jsonl(runs)}
@@ -115,7 +144,8 @@ def cmd_cold_start(args) -> None:
     def one_project(project: str) -> None:
         for key in by_project[project]:
             result = run_harness(project, key, f"cold-{project}-{simple(key)}",
-                                 provider=TEACHER_PROVIDER, model=TEACHER_MODEL)
+                                 provider=TEACHER_PROVIDER, model=TEACHER_MODEL,
+                                 reasoning_effort=TEACHER_EFFORT)
             with open(runs, "a", encoding="utf-8") as fh:
                 fh.write(json.dumps(result) + "\n")
             suite = result["suite"]
@@ -149,7 +179,8 @@ def cmd_cold_start(args) -> None:
 # ------------------------------------------------------------------ sampling and scoring
 def merged_model(adapter: Path, tag: str) -> Path:
     merged = MODELS / "merged" / tag
-    if not (merged / "config.json").exists():
+    # preprocessor_config.json is written last; a merge that died before it is incomplete.
+    if not (merged / "preprocessor_config.json").exists():
         subprocess.run([str(TRAIN_PYTHON), "-m", "training.merge", "--adapter", str(adapter),
                         "--out", str(merged)], cwd=ROOT, check=True,
                        env={**os.environ, "HF_HOME": os.environ.get("HF_HOME", "/mnt/c/Users/akosc/.cache/huggingface")})
@@ -169,6 +200,7 @@ def caps(prompts: dict[str, dict]) -> list[dict]:
 def sample_and_score(adapter: Path, tag: str, prompts: dict[str, dict], out: Path) -> dict:
     """Rollouts and their scores for one adapter. Returns (class_key, rollout) -> record,
     tier 4 wherever it ran."""
+    out.mkdir(parents=True, exist_ok=True)
     gens_path = out / "generations.jsonl"
     rows = caps(prompts)
     if len({g["class_key"] for g in read_jsonl(gens_path)}) < len(rows):
@@ -197,6 +229,7 @@ def sample_and_score(adapter: Path, tag: str, prompts: dict[str, dict], out: Pat
 def cmd_round(args) -> None:
     r = args.round
     prompts = load_prompts("train")
+    check_teacher()
     out = LOOP / f"round-{r}"
     out.mkdir(parents=True, exist_ok=True)
     adapter = MODELS / ("cold-start" if r == 1 else f"round-{r - 1}")
@@ -229,7 +262,8 @@ def cmd_round(args) -> None:
             continue
         start_from = most_tests(gens_by_class[key])
         result = run_harness(prompts[key]["project"], key, f"round{r}-{prompts[key]['project']}-{simple(key)}",
-                             provider=TEACHER_PROVIDER, model=TEACHER_MODEL, rollout_text=start_from["text"])
+                             provider=TEACHER_PROVIDER, model=TEACHER_MODEL, rollout_text=start_from["text"],
+                             reasoning_effort=TEACHER_EFFORT)
         result["from_rollout"] = start_from["rollout"]
         rescued[key] = result
         with rescues_path.open("a", encoding="utf-8") as fh:

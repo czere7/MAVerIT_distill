@@ -25,6 +25,7 @@ from pathlib import Path
 
 def merge(adapter: Path, out: Path, base: str = "Qwen/Qwen3.5-2B") -> None:
     import torch
+    from huggingface_hub import hf_hub_download
     from peft import PeftModel
     from transformers import AutoModelForImageTextToText, AutoProcessor, AutoTokenizer
 
@@ -46,6 +47,9 @@ def merge(adapter: Path, out: Path, base: str = "Qwen/Qwen3.5-2B") -> None:
     merged.save_pretrained(str(out), safe_serialization=True)
     AutoTokenizer.from_pretrained(base).save_pretrained(str(out))
     AutoProcessor.from_pretrained(base).save_pretrained(str(out))
+    # transformers 5 writes the processor as one processor_config.json; the image processor's
+    # own preprocessor_config.json comes from the base model, as in every merge that served.
+    shutil.copy(hf_hub_download(base, "preprocessor_config.json"), out / "preprocessor_config.json")
     for required in ("preprocessor_config.json", "tokenizer_config.json", "config.json"):
         if not (out / required).exists():
             raise RuntimeError(f"merged model is missing {required}; vLLM will refuse it")

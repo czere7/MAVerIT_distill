@@ -49,11 +49,15 @@ def most_tests(generations: list[dict]) -> dict:
 
 
 def final_suite(run_dir: Path) -> dict | None:
-    """The harness's surviving suite: the last green restore point in its log.
+    """The harness's surviving suite: the suite of the last GREEN row in its log.
 
-    compiler_node stores last_compilable_test_class only when the suite is green, and
-    faulty_test_cleanup restores or trims to green, so the last row carrying one is the
-    suite the class ended with. None when nothing was ever green.
+    Every green suite is logged with `suite_green: true` and the suite as `test_class`,
+    whether compiler_node scored it or faulty_test_cleanup trimmed a red suite down to it.
+    `last_compilable_test_class` is NOT the key: the cleanup's trimmed suite is logged with
+    it empty, and reading that field alone threw away every class the cleanup rescued
+    (smoke run: 1 of 7 fall-throughs). A cleanup that restores an earlier green suite logs
+    nothing new, so the last green row is still the one the class ended with.
+    None when nothing was ever green.
     """
     log = run_dir / "log.jsonl"
     if not log.exists():
@@ -61,10 +65,10 @@ def final_suite(run_dir: Path) -> dict | None:
     rows = [json.loads(l) for l in log.open(encoding="utf-8") if l.strip()]
     suite, mutation = None, None
     for row in rows:
-        if row.get("last_compilable_test_class"):
-            suite = row["last_compilable_test_class"]
-        if row.get("suite_green") and row.get("mutation") not in (None, "None"):
-            mutation = float(row["mutation"])
+        if row.get("suite_green") and row.get("test_class"):
+            suite = row["test_class"]
+            mutation = (float(row["mutation"]) if row.get("mutation") not in (None, "None")
+                        else None)
     if not suite:
         return None
     return {"source": suite, "mutation_score_pct": mutation,

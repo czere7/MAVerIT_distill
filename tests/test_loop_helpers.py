@@ -36,12 +36,12 @@ def test_kills_a_mutant_reads_every_subset_a_target_could_come_from():
     assert kills_a_mutant({"salvaged_mutation_score_pct": 1.0})
 
 
-def test_final_suite_is_the_last_green_restore_point(tmp_path):
+def test_final_suite_is_the_last_green_suite(tmp_path):
     rows = [
-        {"last_compilable_test_class": None, "suite_green": False, "mutation": "None"},
-        {"last_compilable_test_class": SUITE % suite_of(2), "suite_green": True, "mutation": 40.0},
-        {"last_compilable_test_class": SUITE % suite_of(3), "suite_green": True, "mutation": 55.0},
-        {"last_compilable_test_class": SUITE % suite_of(3), "suite_green": False, "mutation": "None"},
+        {"test_class": SUITE % suite_of(1), "suite_green": False, "mutation": "None"},
+        {"test_class": SUITE % suite_of(2), "suite_green": True, "mutation": 40.0},
+        {"test_class": SUITE % suite_of(3), "suite_green": True, "mutation": 55.0},
+        {"test_class": SUITE % suite_of(4), "suite_green": False, "mutation": "None"},
     ]
     (tmp_path / "log.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
     suite = final_suite(tmp_path)
@@ -49,8 +49,21 @@ def test_final_suite_is_the_last_green_restore_point(tmp_path):
     assert suite["mutation_score_pct"] == 55.0
 
 
+def test_final_suite_keeps_a_suite_the_cleanup_trimmed_to_green(tmp_path):
+    # The smoke-run case: never green until faulty_test_cleanup dropped the failing tests,
+    # and the cleanup logs its suite with last_compilable_test_class empty.
+    rows = [
+        {"origin": "compiler_node", "test_class": SUITE % suite_of(12), "suite_green": False,
+         "last_compilable_test_class": "", "mutation": "None"},
+        {"origin": "faulty_test_cleanup_node", "test_class": SUITE % suite_of(10),
+         "suite_green": True, "last_compilable_test_class": "", "mutation": 0.0},
+    ]
+    (tmp_path / "log.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    assert final_suite(tmp_path)["n_tests"] == 10
+
+
 def test_final_suite_is_none_when_nothing_was_ever_green(tmp_path):
-    (tmp_path / "log.jsonl").write_text(json.dumps({"last_compilable_test_class": None}) + "\n")
+    (tmp_path / "log.jsonl").write_text(json.dumps({"test_class": "x", "suite_green": False}) + "\n")
     assert final_suite(tmp_path) is None
     assert final_suite(tmp_path / "missing") is None
 

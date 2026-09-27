@@ -23,6 +23,8 @@ from pathlib import Path
 
 import yaml
 
+from training.gpu import unload_ollama
+
 TRAIN_PYTHON = Path(os.environ.get("TRAIN_PYTHON", Path.home() / "maverit-ft" / "bin" / "python"))
 BASE_MODEL = "Qwen/Qwen3.5-2B"
 CUTOFF_LEN = 24_576
@@ -82,6 +84,7 @@ def render(recipe: str, dataset_dir: Path, dataset: str, output_dir: Path,
 
 def train(cfg: dict, config_path: Path, log_path: Path) -> None:
     """Write the config next to the run and train. Raises on a failed run, with the tail."""
+    unload_ollama()
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
     env = {**os.environ,
