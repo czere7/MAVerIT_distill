@@ -1,0 +1,16 @@
+[project]
+name = "VibeTest"
+version = "0.1.0"
+description = "VibeTest is a LangGraph framework, thats porpuse is to generate coverage and mutation score guided unit tests for Maven projects."
+requires-python = ">=3.10"
+dependencies = [
+    "langchain-core",
+    "langchain-openai",
+    "langchain_ollama",
+    "langgraph",
+    "pillow",
+    "python-dotenv",
+    "openai",
+    "tree-sitter",
+    "tree-sitter-java",
+]
