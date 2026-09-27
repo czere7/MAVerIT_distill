@@ -1,5 +1,6 @@
-# secrets and local tooling
+# secrets and local tooling; claude/ holds Claude's own measurement and patch scripts
 .env
+claude/
 .idea/
 __pycache__/
 *.py[cod]
