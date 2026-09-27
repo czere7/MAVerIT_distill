@@ -1,0 +1,17 @@
+# The harness's environment, pinned to the versions it was developed and ablated on
+# (Windows PyCharm venv, Python 3.10.11). The WSL venv is built from this file:
+#
+#     uv venv --python 3.10 ~/distil-env
+#     uv pip install --python ~/distil-env/bin/python -r requirements.txt
+#
+# Also needed on PATH, outside Python: JDK 17 (jackson-core targets 17), Maven 3.9, javap.
+langchain-core==1.5.0
+langchain-openai==1.4.0
+langchain-ollama==1.0.1
+langgraph==1.1.2
+openai==2.46.0
+ollama==0.6.1
+python-dotenv==1.2.2
+pillow==12.1.1
+tree-sitter==0.25.1
+tree-sitter-java==0.23.5

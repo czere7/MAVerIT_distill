@@ -21,8 +21,9 @@ import time
 from pathlib import Path
 
 HARNESS = Path(__file__).resolve().parents[1]
-PROJECTS = Path(r"C:\Users\akosc\IdeaProjects")
-PY = r"C:\Users\akosc\Desktop\PyCharmMiscProject\PyCharmMiscProject\venv\Scripts\python.exe"
+PY = sys.executable            # the interpreter running the driver runs the harness too
+sys.path.insert(0, str(HARNESS))
+from paths import PROJECTS  # noqa: E402
 ABLATION = HARNESS / "ablation"
 WALL_CLOCK_MIN = 60
 

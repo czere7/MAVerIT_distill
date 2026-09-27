@@ -12,12 +12,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from paths import PROJECTS  # noqa: E402
 from Extractor import Extractor  # noqa: E402
 from utils import config, is_concrete_class  # noqa: E402
 import retrieval  # noqa: E402
 from nodes.initial_test_write_node import _build_prompt  # noqa: E402
-
-PROJECTS = Path(r"C:\Users\akosc\IdeaProjects")
 
 
 def main() -> int:
@@ -34,7 +33,7 @@ def main() -> int:
         files = files_cache[project]
         simple = entry["class"].rsplit(".", 1)[-1]
         cut = next(f for f in files if is_concrete_class(f) and Path(f.file_path).stem == simple
-                   and entry["class"].replace(".", "\\") in f.file_path)
+                   and entry["class"].replace(".", "/") in f.file_path.replace("\\", "/"))
         for arm in arms:
             config["RETRIEVER"] = arm
             retrieval._INDEX_CACHE.clear()

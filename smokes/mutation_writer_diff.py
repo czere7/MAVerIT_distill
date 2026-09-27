@@ -23,9 +23,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from paths import RECORDS  # noqa: E402
 from utils import parser, strip_markdown_code_fence  # noqa: E402
 
-RECORDS = Path(r"C:\Users\akosc\Desktop\MAVerIT4\inference_records")
 TEST_ANN = re.compile(r"@\s*(?:[\w.]+\.)?(?:Test|ParameterizedTest|RepeatedTest|TestFactory)\b")
 ASSERT = re.compile(r"\b(?:assert\w*|fail|verify)\s*\(")
 

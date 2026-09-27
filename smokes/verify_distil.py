@@ -26,12 +26,13 @@ import shutil
 import sys
 from pathlib import Path
 
+from paths import PROJECTS  # noqa: E402
 from utils import (calculate_branch_coverage_for_class,
                    calculate_line_coverage_for_class, find_jacoco_xml_reports,
                    find_surefire_reports, get_maven_module_directory,
                    parse_surefire, parse_surefire_failures, run_maven)
 
-PROJECT = Path(r"C:\Users\akosc\IdeaProjects\commons-codec-clean")
+PROJECT = PROJECTS / "commons-codec-clean"
 CUT = PROJECT / "src/main/java/org/apache/commons/codec/binary/StringUtils.java"
 TEST_DIR = PROJECT / "src/test/java/org/apache/commons/codec/binary"
 TEST_FILE = TEST_DIR / "HarnessProbeTest.java"

@@ -15,9 +15,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from paths import PROJECTS  # noqa: E402
 from utils import config, initial_metric_state, is_concrete_class  # noqa: E402
 
-PROJECT = Path(r"C:\Users\akosc\IdeaProjects\jackson-core-clean")
+PROJECT = PROJECTS / "jackson-core-clean"
 CUT = "JsonParserDelegate.java"
 SOURCE = Path("ablation/_aborted-2026-09-27/abl-v1-JsonParserDelegate/log.jsonl")
 RUN_ID = "live-edit-tools"
@@ -51,7 +52,7 @@ def main() -> int:
     with contextlib.redirect_stdout(io.StringIO()):
         files = Extractor(str(PROJECT)).extract_all()
     tests = [f for f in files if is_concrete_class(f)]
-    cut = next(f for f in tests if f.file_path.endswith("\\" + CUT))
+    cut = next(f for f in tests if f.file_path.replace("\\", "/").endswith("/" + CUT))
     failing = [json.loads(l) for l in SOURCE.read_text(encoding="utf-8").splitlines()][-1]
     state = {**initial_metric_state(), "all_files": files, "all_test_files": [cut],
              "current_class_index": 0, "run_id": RUN_ID, "test_class": failing["test_class"],

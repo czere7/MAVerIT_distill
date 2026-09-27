@@ -14,7 +14,9 @@ class Extractor:
         self.generator = self._extract_next()
 
     def _extract_next(self) -> Generator[SourceCodeFileData, Any, None]:
-        files = glob.glob(f'{self.base_dir_path}/**/*.java', recursive=True)
+        # Sorted: glob returns the filesystem's order (NTFS sorts, ext4 does not), and the
+        # class list, batch order and --list-classes must not depend on the machine.
+        files = sorted(glob.glob(f'{self.base_dir_path}/**/*.java', recursive=True))
         for file in files:
             if _is_implementation_source(file):
                 print(f"Extracted file: {file}")

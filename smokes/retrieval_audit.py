@@ -32,16 +32,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from paths import PROJECTS, RECORDS  # noqa: E402
 from Extractor import Extractor  # noqa: E402
 from utils import (KEEP_COMMENT_MARKER, CLASS_RE, extract_methods, get_relevant_source_files,  # noqa: E402
                    is_concrete_class, parser, walk)
 
 PROJECTS = {  # project -> the checkout the logs were generated from (same main sources)
-    "commons-cli": r"C:\Users\akosc\IdeaProjects\commons-cli2",
-    "commons-codec": r"C:\Users\akosc\IdeaProjects\commons-codec2",
-    "commons-csv": r"C:\Users\akosc\IdeaProjects\commons-csv2",
-    "jackson-core": r"C:\Users\akosc\IdeaProjects\jackson-core",
-    "joda-time": r"C:\Users\akosc\IdeaProjects\joda-time2",
+    "commons-cli": str(PROJECTS / "commons-cli2"),
+    "commons-codec": str(PROJECTS / "commons-codec2"),
+    "commons-csv": str(PROJECTS / "commons-csv2"),
+    "jackson-core": str(PROJECTS / "jackson-core"),
+    "joda-time": str(PROJECTS / "joda-time2"),
 }
 from smokes import retrieval_v2, retrieval_v3  # noqa: E402
 from smokes.retrieval_v2 import get_relevant_source_files_v2  # noqa: E402
@@ -50,7 +51,6 @@ from smokes.retrieval_v3 import get_relevant_source_files_v3  # noqa: E402
 RETRIEVERS = {"v1": get_relevant_source_files, "v2": get_relevant_source_files_v2,
               "v3": get_relevant_source_files_v3}
 REASONS = {"v2": retrieval_v2.LAST_REASONS, "v3": retrieval_v3.LAST_REASONS}
-RECORDS = Path(r"C:\Users\akosc\Desktop\MAVerIT4\inference_records")
 OUT = Path("smokes/retrieval-audit")
 
 

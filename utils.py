@@ -9,7 +9,6 @@ from typing import Any, Mapping, TypedDict, List
 import xml.etree.ElementTree as ET
 import time
 
-from pip._internal.commands import search
 from tree_sitter import Language, Parser, Query, QueryCursor
 import tree_sitter_java as tsjava
 
