@@ -1,0 +1,7 @@
+[
+ {"project": "jackson-core-clean", "class": "tools.jackson.core.io.SegmentedStringWriter"},
+ {"project": "jackson-core-clean", "class": "tools.jackson.core.json.JsonFactoryBuilder"},
+ {"project": "jackson-core-clean", "class": "tools.jackson.core.util.BufferRecycler"},
+ {"project": "jackson-core-clean", "class": "tools.jackson.core.util.ByteArrayBuilder"},
+ {"project": "jackson-core-clean", "class": "tools.jackson.core.util.DefaultIndenter"}
+]

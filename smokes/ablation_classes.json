@@ -1,0 +1,50 @@
+[
+ {
+  "project": "jackson-core-clean",
+  "class": "tools.jackson.core.util.JsonParserDelegate"
+ },
+ {
+  "project": "jackson-core-clean",
+  "class": "tools.jackson.core.json.ByteSourceJsonBootstrapper"
+ },
+ {
+  "project": "jackson-core-clean",
+  "class": "tools.jackson.core.util.SimpleStreamWriteContext"
+ },
+ {
+  "project": "jackson-core-clean",
+  "class": "tools.jackson.core.filter.FilteringGeneratorDelegate"
+ },
+ {
+  "project": "jackson-core-clean",
+  "class": "tools.jackson.core.json.JsonFactoryBuilder"
+ },
+ {
+  "project": "jackson-core-clean",
+  "class": "tools.jackson.core.util.JsonGeneratorDelegate"
+ },
+ {
+  "project": "commons-cli-clean",
+  "class": "org.apache.commons.cli.GnuParser"
+ },
+ {
+  "project": "commons-cli-clean",
+  "class": "org.apache.commons.cli.OptionBuilder"
+ },
+ {
+  "project": "commons-cli-clean",
+  "class": "org.apache.commons.cli.PosixParser"
+ },
+ {
+  "project": "commons-codec-clean",
+  "class": "org.apache.commons.codec.binary.Base32"
+ },
+ {
+  "project": "commons-codec-clean",
+  "class": "org.apache.commons.codec.binary.Base16"
+ },
+ {
+  "project": "commons-codec-clean",
+  "class": "org.apache.commons.codec.binary.Base58"
+ }
+]
