@@ -18,8 +18,14 @@ import json
 from pathlib import Path
 
 PROMPT_LIMIT = 20_480
-HELD_OUT = ("commons-cli-clean",)
-TRAINING = ("commons-codec-clean", "commons-csv-clean", "jackson-core-clean", "joda-time-clean")
+# Split BY PROJECT: a class-level split would let train and eval share collaborators, idioms
+# and helpers, and measure recall. commons-cli, held out through the preference and RFT
+# phases, trains now; the held-out projects are new to the loop and differ in style from
+# training (jsoup is not Apache code; joda-money is joda-time's author family, a known,
+# partial leak). joda-money is pinned to v1.0.7, the last release that builds on JDK 17.
+HELD_OUT = ("jsoup-clean", "joda-money-clean")
+TRAINING = ("commons-cli-clean", "commons-codec-clean", "commons-csv-clean",
+            "jackson-core-clean", "joda-time-clean")
 
 
 def class_key(project_dir: Path, file_path: str) -> str:
@@ -46,7 +52,13 @@ def build(projects: tuple[str, ...], scratch: Path) -> list[dict]:
         with contextlib.redirect_stdout(io.StringIO()):
             files = Extractor(str(project)).extract_all()
         targets = [f for f in files if is_concrete_class(f)]
+        main_java = project / "src" / "main" / "java"
         for i, cut in enumerate(targets):
+            # Only src/main/java: class keys, the collaborator index (target/classes) and the
+            # harness all address classes there. Multi-release variants (jsoup's
+            # src/main/java11, two HTTP client classes) compile into META-INF/versions.
+            if not Path(cut.file_path).is_relative_to(main_java):
+                continue
             with contextlib.redirect_stdout(io.StringIO()):
                 prompt = _build_prompt({"all_files": files, "all_test_files": targets,
                                         "current_class_index": i})
