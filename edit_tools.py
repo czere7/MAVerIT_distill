@@ -276,6 +276,25 @@ def run_edit_turns(prompt: str, suite: str, tools: list[dict],
         tokens_in += usage.get("input_tokens", 0)
         tokens_out += usage.get("output_tokens", 0)
         calls = response.tool_calls or []
+        invalid = getattr(response, "invalid_tool_calls", None) or []
+        if invalid:
+            # Arguments that are not valid JSON land in invalid_tool_calls, not tool_calls,
+            # but the assistant message still carries the call when it is sent back -- and
+            # DeepSeek rejects the whole conversation (400) unless EVERY call id gets a tool
+            # message. A turn is atomic, so the valid calls beside it are not applied either.
+            attempted = True
+            print(f"[{node_name}] tool call rejected (turn {turn + 1}): arguments were not valid JSON")
+            messages.append(response)
+            for call in calls:
+                messages.append(ToolMessage("NOT APPLIED: another call in this reply had invalid "
+                                            "arguments, so nothing was applied",
+                                            tool_call_id=call.get("id") or call["name"]))
+            for call in invalid:
+                messages.append(ToolMessage(
+                    "NOT APPLIED: the arguments were not valid JSON. Resend the call with the "
+                    "Java source as a correctly escaped JSON string.",
+                    tool_call_id=call.get("id") or call.get("name") or "invalid"))
+            continue
         if calls:
             attempted = True
             try:
