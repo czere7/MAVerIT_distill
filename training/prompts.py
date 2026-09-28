@@ -22,8 +22,9 @@ PROMPT_LIMIT = 20_480
 # and helpers, and measure recall. commons-cli, held out through the preference and RFT
 # phases, trains now; the held-out projects are new to the loop and differ in style from
 # training (jsoup is not Apache code; joda-money is joda-time's author family, a known,
-# partial leak). joda-money is pinned to v1.0.7, the last release that builds on JDK 17.
-HELD_OUT = ("jsoup-clean", "joda-money-clean")
+# partial leak; petclinic-rest is a Spring Boot backend, the one application in the set).
+# joda-money is pinned to v1.0.7, the last release that builds on JDK 17.
+HELD_OUT = ("jsoup-clean", "joda-money-clean", "petclinic-rest-clean")
 TRAINING = ("commons-cli-clean", "commons-codec-clean", "commons-csv-clean",
             "jackson-core-clean", "joda-time-clean")
 
