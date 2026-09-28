@@ -95,7 +95,12 @@ def run_harness(project: str, class_key: str, run_id: str, *, provider: str, mod
     clear_tests(project_path)
     started = time.monotonic()
     run_dir = HARNESS / "logs" / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
+    if run_dir.exists():
+        # The harness APPENDS to log.jsonl. A leftover directory -- a crashed attempt, or an
+        # earlier run under the same id -- would put its suites into this run's log, and
+        # final_suite would read them as this run's result. Keep it, but out of the way.
+        run_dir.rename(run_dir.with_name(f"{run_id}.stale-{time.strftime('%Y%m%d-%H%M%S')}"))
+    run_dir.mkdir(parents=True)
     with (run_dir / "stdout.log").open("w", encoding="utf-8") as out:
         try:
             proc = subprocess.run(cmd, cwd=HARNESS, stdout=out, stderr=subprocess.STDOUT,
