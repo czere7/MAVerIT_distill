@@ -59,8 +59,9 @@ RESCUE_PARALLEL = int(os.environ.get("RESCUE_PARALLEL", "3"))
 # outside the default LOOP_DIR (a smoke or teacher trial) prefixes its ids with the
 # directory name, so the real run can never reuse or read them.
 RUN_PREFIX = "" if LOOP.name == "loop" else f"{LOOP.name}-"
-SCORE_WORKERS = 6
-TIER4_WORKERS = 4
+# Both overridable: the machine has reset under full CPU load (tier-4 PIT at 12 threads each).
+SCORE_WORKERS = int(os.environ.get("SCORE_WORKERS", "6"))
+TIER4_WORKERS = int(os.environ.get("TIER4_WORKERS", "4"))
 
 
 # ------------------------------------------------------------------ small helpers
