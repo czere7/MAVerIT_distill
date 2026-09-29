@@ -55,26 +55,39 @@ def served_models() -> list[str]:
         return [m["id"] for m in json.loads(response.read())["data"]]
 
 
-def start(model_dir: Path, name: str, log_path: Path, wait_s: int = 900) -> None:
-    """Serve `model_dir` as `name`; returns once /v1/models answers with that name."""
-    stop()
-    unload_ollama()
-    log = log_path.open("w", encoding="utf-8")
-    subprocess.Popen([str(VLLM_ENV / "bin" / "vllm"), "serve", str(model_dir),
-                      "--port", str(PORT), "--host", "127.0.0.1",
-                      "--max-model-len", str(MAX_MODEL_LEN),
-                      "--gpu-memory-utilization", str(GPU_MEMORY_UTILIZATION),
-                      "--served-model-name", name],
-                     stdout=log, stderr=subprocess.STDOUT, env=_env(), start_new_session=True)
-    deadline = time.monotonic() + wait_s
-    while time.monotonic() < deadline:
-        time.sleep(10)
-        if healthy():
-            # A leftover server answers happily with the wrong weights; check the name.
-            if name not in served_models():
-                raise RuntimeError(f"port {PORT} serves {served_models()}, not {name}")
-            return
-    raise RuntimeError(f"vLLM did not come up in {wait_s}s; see {log_path}")
+def start(model_dir: Path, name: str, log_path: Path, wait_s: int = 900, attempts: int = 2) -> None:
+    """Serve `model_dir` as `name`; returns once /v1/models answers with that name.
+
+    A server process that EXITS during startup is caught at once, not after `wait_s`: the
+    first cold-start eval died two seconds in on a native heap abort ("corrupted
+    double-linked list") and the old loop waited fifteen minutes for a port nothing would
+    ever open. Such a crash gets one more attempt before the step fails.
+    """
+    for attempt in range(1, attempts + 1):
+        stop()
+        unload_ollama()
+        with log_path.open("w", encoding="utf-8") as log:
+            proc = subprocess.Popen([str(VLLM_ENV / "bin" / "vllm"), "serve", str(model_dir),
+                                     "--port", str(PORT), "--host", "127.0.0.1",
+                                     "--max-model-len", str(MAX_MODEL_LEN),
+                                     "--gpu-memory-utilization", str(GPU_MEMORY_UTILIZATION),
+                                     "--served-model-name", name],
+                                    stdout=log, stderr=subprocess.STDOUT, env=_env(),
+                                    start_new_session=True)
+        deadline = time.monotonic() + wait_s
+        while time.monotonic() < deadline and proc.poll() is None:
+            time.sleep(10)
+            if healthy():
+                # A leftover server answers happily with the wrong weights; check the name.
+                if name not in served_models():
+                    raise RuntimeError(f"port {PORT} serves {served_models()}, not {name}")
+                return
+        if proc.poll() is None:
+            raise RuntimeError(f"vLLM did not come up in {wait_s}s; see {log_path}")
+        tail = log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-3:]
+        print(f"vLLM exited during startup (code {proc.returncode}, attempt {attempt}/{attempts}): "
+              f"{' | '.join(tail)}", flush=True)
+    raise RuntimeError(f"vLLM exited during startup {attempts} times; see {log_path}")
 
 
 def _gpu_pids() -> list[int]:
