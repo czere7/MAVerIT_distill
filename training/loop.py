@@ -34,6 +34,7 @@ import json
 import os
 import statistics
 import subprocess
+import threading
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -53,6 +54,11 @@ TEACHER_MODEL = os.environ.get("TEACHER_MODEL", "deepseek-v4-flash")
 TEACHER_EFFORT = os.environ.get("TEACHER_REASONING_EFFORT") or None
 # A smoke run: only the N smallest-prompt classes, taken round-robin across projects.
 LIMIT = int(os.environ.get("LOOP_LIMIT", "0"))
+RESCUE_PARALLEL = int(os.environ.get("RESCUE_PARALLEL", "3"))
+# Harness run directories live in logs/ beside every other run, keyed by run id. A loop
+# outside the default LOOP_DIR (a smoke or teacher trial) prefixes its ids with the
+# directory name, so the real run can never reuse or read them.
+RUN_PREFIX = "" if LOOP.name == "loop" else f"{LOOP.name}-"
 SCORE_WORKERS = 6
 TIER4_WORKERS = 4
 
@@ -143,7 +149,7 @@ def cmd_cold_start(args) -> None:
     # One worker PER PROJECT: runs on the same project would share its src/test.
     def one_project(project: str) -> None:
         for key in by_project[project]:
-            result = run_harness(project, key, f"cold-{project}-{simple(key)}",
+            result = run_harness(project, key, f"{RUN_PREFIX}cold-{project}-{simple(key)}",
                                  provider=TEACHER_PROVIDER, model=TEACHER_MODEL,
                                  reasoning_effort=TEACHER_EFFORT)
             with open(runs, "a", encoding="utf-8") as fh:
@@ -257,19 +263,35 @@ def cmd_round(args) -> None:
     gens_by_class = defaultdict(list)
     for g in gens:
         gens_by_class[g["class_key"]].append(g)
+    todo = defaultdict(list)
     for key in fall:
-        if key in rescued or not gens_by_class[key]:
-            continue
-        start_from = most_tests(gens_by_class[key])
-        result = run_harness(prompts[key]["project"], key, f"round{r}-{prompts[key]['project']}-{simple(key)}",
-                             provider=TEACHER_PROVIDER, model=TEACHER_MODEL, rollout_text=start_from["text"],
-                             reasoning_effort=TEACHER_EFFORT)
-        result["from_rollout"] = start_from["rollout"]
-        rescued[key] = result
-        with rescues_path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(result) + "\n")
-        print(f"  rescue {simple(key)[:30]:30} {result['status']:8} {result['minutes']:5.1f} min  "
-              + (f"{result['suite']['n_tests']} tests" if result["suite"] else "no green suite"), flush=True)
+        if key not in rescued and gens_by_class[key]:
+            todo[prompts[key]["project"]].append(key)
+    lock = threading.Lock()
+
+    # One worker PER PROJECT, as in the cold start: two harness runs on one project would
+    # share its src/test. At round 1 nearly every class falls through, and one at a time
+    # that is ~20 hours of wall clock.
+    def rescue_project(project: str) -> None:
+        for key in todo[project]:
+            start_from = most_tests(gens_by_class[key])
+            result = run_harness(project, key, f"{RUN_PREFIX}round{r}-{project}-{simple(key)}",
+                                 provider=TEACHER_PROVIDER, model=TEACHER_MODEL,
+                                 rollout_text=start_from["text"], reasoning_effort=TEACHER_EFFORT)
+            result["from_rollout"] = start_from["rollout"]
+            with lock:
+                rescued[key] = result
+                with rescues_path.open("a", encoding="utf-8") as fh:
+                    fh.write(json.dumps(result) + "\n")
+                print(f"  rescue {project:20} {simple(key)[:30]:30} {result['status']:8} "
+                      f"{result['minutes']:5.1f} min  "
+                      + (f"{result['suite']['n_tests']} tests" if result["suite"] else "no green suite"),
+                      flush=True)
+
+    print(f"fall-through: {len(fall)} classes, {sum(map(len, todo.values()))} to rescue, "
+          f"{RESCUE_PARALLEL} projects at a time, teacher {TEACHER_PROVIDER}/{TEACHER_MODEL}", flush=True)
+    with ThreadPoolExecutor(max_workers=max(1, min(RESCUE_PARALLEL, len(todo)))) as ex:
+        list(ex.map(rescue_project, sorted(todo)))
 
     round_targets = (
         [{"class_key": k, "kind": "self", "round": r, "source": t["source"]} for k, t in self_targets.items()]
